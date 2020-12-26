@@ -1,0 +1,45 @@
+GET METHOD
+
+fetch('https://jsonplaceholder.typicode.com/comments/')
+.then(
+    (response) => response.json()
+)
+.then(
+    (json)=>{
+        console.log(json)
+    }
+)
+.catch(
+    (error) => {
+        console.log(error)
+    } 
+)
+
+
+
+POST METHOD
+
+fetch('https://jsonplaceholder.typicode.com/posts', {
+    method: 'POST',
+    headers: {
+            "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        title: 'My Review',
+        body: '4/5 stars. The product was good but something something I didnt like',
+        userId: 005
+    })
+})
+.then(
+    (response) => response.json()
+)
+.then(
+    (json)=>{
+        console.log(json)
+    }
+)
+.catch(
+    (error) => {
+        console.log(error)
+    } 
+)

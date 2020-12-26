@@ -1,15 +1,15 @@
 const express = require('express');
+const passport = require('passport');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jsonwebtoken = require('jsonwebtoken');
 const UserModel = require('../models/UserModel.js');
-const jwtSecret = "xyzABC123";
-
-
+const jwtSecret = process.env.SECRET;;
+const cloudinary = require('cloudinary').v2;
 
 router.post(
-    '/register',
-    (req, res) => {
+    '/register',                                   // users/register
+    (req, res) => { 
         const formData = {
             firstName: req.body.firstName,
             lastName: req.body.lastName,
@@ -18,58 +18,85 @@ router.post(
         };
 
         const newUserModel = new UserModel(formData);
-
-        newUserModel
-        .save()
-
-                /*
-         * Here we check for (A) uniques emails and
-         * (B) prepare password for registration
+    
+        /*
+         * Here we check for (A) uniques emails,
+         * (B) prepare password for registration, and
+         * (C) upload image to Cloudinary if provided
          */
-
-
+    
         /* Part (A) */
-        // 1. Search the database for exact email match
+        // 1. Search the database for a matching email address
         UserModel
-        .find({email: formData.email})
+        .findOne({ email: formData.email })
         .then(
-            (document) => {}
-        )
-        .catch()
-        // 2.1 If there is a matchMedia, reject the registration
+            async (document) => {
 
-        // 2.2 If there is match proceed with part B
+                // 2.1. If there is a match, reject the registration
+                if(document) {
+                    res.send({ message: "An account with that email already exists." })
+                }
 
-        /* Part (B) */
+                // 2.2. If there is not match, proceed to Part (B)
+                else { 
 
-        // 1. Generate a salt
-        bcrypt.genSalt(
-            (err, salt) => {
-
-                // 2. Take salt and user's password to hash password
-                bcrypt.hash(
-                    formData.password,
-                    salt,
-                    (err, encryptedPassword) => {
-                        // 3. Replace the user's password with the hash
-                        newUserModel.password = encryptedPassword;
-
-                        // 4. Save to the database
-                        newUserModel
-                        .save()
-                        .then(
-                            (document) => {
-                                res.send(document)
-                            }
-                        )
-                        .catch(
-                            (error) => {
-                                console.log('error', error);
-                                res.send({'error': error})
+                     /* Part (C) */
+                    // 1. Check if image is included
+                    if(Object.values(req.files).length>0){
+                        // 1.1 If included, upload to Cloudinary
+                        const files = Object.values(req.files);                        
+                        await cloudinary.uploader.upload(
+                            // location of file
+                            files[0].path, 
+                            // callback for when file is uploaded                            
+                            (error, cloudinaryResult) => {
+                                if(error) {
+                                    console.log('error from cloudinary', error)
+                                    res.send({ error: error })
+                                }
+                                // 1.2 Take the image url and append it to newUserModel
+                                console.log(cloudinaryResult);
+                                newUserModel.photoUrl  = cloudinaryResult.url;
                             }
                         )
                     }
-                )
+                    /* Part (B) */
+                    // 1. Generate a salt
+                    bcrypt.genSalt(
+                        (err, salt) => {
+
+                            // 2. Take salt and user's password to hash password
+                            bcrypt.hash(
+                                formData.password,
+                                salt,
+                                (err, encryptedPassword) => {
+                                    // 3. Replace the user's password with the hash
+                                    newUserModel.password = encryptedPassword;
+
+                                    // 4. Save to the database
+                                    newUserModel
+                                    .save()
+                                    .then(
+                                        (document) => {
+                                            res.send(document)
+                                        }
+                                    )
+                                    .catch(
+                                        (error) => {
+                                            console.log('error', error);
+                                            res.send({'error': error})
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+        )
+        .catch(
+            (err) => {
+                res.send({err: "Something went wrong."})
             }
         )
     }
@@ -156,5 +183,27 @@ router.get(
         )
     }
 );
+
+router.get(
+    '/profile',
+    passport.authenticate('jwt', {session: false}),
+    (req, res) => {
+        UserModel
+        .findById(req.user.id)
+        .then(
+            (document) => {
+                res.send(document)
+            }
+        )
+        .catch(
+            (error) => {
+                res.send({
+                    message: "error occured " + error
+                })
+            }
+        )
+
+    }
+)
 
 module.exports = router;

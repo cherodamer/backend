@@ -1,26 +1,42 @@
 // Import the main express file as a function
+
 const express = require('express');
 const cors = require('cors');
+const cloudinary = require('cloudinary').v2;
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const passport = require('passport');
-const UserRoutes = require('./routes/UserRoutes');
+const expressFormData = require('express-form-data');
 const ProductRoutes = require('./routes/ProductRoutes');
+const UserRoutes = require('./routes/UserRoutes');
 const initPassportStrategy = require('./passport-config');
+require('dotenv').config();
+
+
 
 // Invoke express
 const server = express();
 server.use(cors());
 server.use(bodyParser.urlencoded({extended: false}));
+
+// configure express to read body of HTTP request
 server.use(bodyParser.json());
 
-// Configure express to use passport
-server.use(passport.initialize());
+// configure express to read file attachments
+server.use(expressFormData.parse());
 
-// confugure passport to use pasport-jwt
+// configure express to use passport
+server.use(passport.initialize());
+// configure passport to use passport-jwt
 initPassportStrategy(passport);
 
-const dbString = "mongodb+srv://admin:Kiptoo2012@cluster0.mog7x.mongodb.net/test?retryWrites=true&w=majority";
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+}
+)
+const dbString = process.env.DB_URL ;
 
 mongoose
     .connect(dbString, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -36,29 +52,31 @@ mongoose
     )
 
 
-server.get(
-    '/', // http://www.apple.com/
-    (req, res) => {
-        res.send("<h1>Welcome to Home</h1>")
-    }
-);
-
-//User Route
+// Users route
 server.use(
     '/users',
     UserRoutes
-
 );
 
-// Products route
+// Products
 server.use(
     '/products',
     passport.authenticate('jwt', {session: false}),
     ProductRoutes
-
 );
 
 
+// Sample route with parameters
+// server.get(
+//     '/:pagename', // http://www.apple.com/
+//     (req, res) => {
+//         // res.send({
+//         //     filter: req.query.filter,
+//         //     brand: req.query.brand
+//         // })
+//         res.send("<h1> Welcome to " + req.params.pagename + "</h1>")
+//     }
+// );
 
 server.get(
     '*',
@@ -67,7 +85,6 @@ server.get(
     }
 );
 
-
 // Connects a port number on the server
 server.listen(
     3001, 
@@ -75,45 +92,3 @@ server.listen(
         console.log('server is running on http://localhost:3001');
     }
 );
-
-
-
-
-// server.get(
-//     '/',
-//     (req, res) => {
-//         res.send("<h1>Welcome</h1>")
-//     }
-// );
-
-// server.get(
-//     '/about',
-//     (req, res) => {
-//         res.send("<h1>About</h1>")
-//     }
-// );
-// server.get(
-//     '/contact',
-//     (req, res) => {
-//         res.send("<h1>Contact Us</h1>")
-//     }
-// );
-// server.get(
-//     '/privacy-policy',
-//     (req, res) => {
-//         res.send("<h1> view Privacy Policy</h1>")
-//     }
-// );
-// server.get(
-//     '/products',
-//     (req, res) => {
-//         res.send("<h1>Our Products</h1>")
-//     }
-// );
-
-// server.get(
-//     '*',
-//     (req, res) => {
-//         res.send("<h1>404</h1>")
-//     }
-// );

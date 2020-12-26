@@ -25,10 +25,10 @@ router.post(
     '/',
     (req, res) => {
        
-        const formData = {
-            brand: 'Google',
-            model: 'Pixel 5',
-            price: 2500
+        const formData = {            
+            brand: req.body.brand,
+            model: req.body.model,
+            price: req.body.price
         };
 
         const newProduct = new ProductModel(formData);
